@@ -10,3 +10,5 @@
     cd Typescript
     npm install
     npx expo start -c
+  
+Android tool: https://github.com/bigbang4964/Extract-zl-data/releases/tag/android
