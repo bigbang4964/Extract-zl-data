@@ -385,8 +385,18 @@ class App:
                     messagebox.showinfo("Mở thành công", f"Đã mở DB thành công.\nTìm thấy {len(table_info)} bảng.")
                 self.root.after(0, update_ui)
             except Exception as e:
+                err_msg = str(e).lower()
                 def err_ui():
-                    messagebox.showerror("Mở DB thất bại", f"Không mở được DB: {e}")
+                    if "file is not a database" in err_msg or "not a database" in err_msg:
+                        messagebox.showerror(
+                            "Sai key hoặc cipher",
+                            f"Không mở được DB.\n\nNguyên nhân có thể:\n"
+                            f" • Sai key (thường là số điện thoại, chuỗi hex, ...)\n"
+                            f" • Sai cipher_compat (thử đổi giữa 3 hoặc 4)\n\n"
+                            f"Chi tiết lỗi: {e}"
+                        )
+                    else:
+                        messagebox.showerror("Mở DB thất bại", f"Không mở được DB: {e}")
                     self.log_status("Mở DB thất bại")
                 self.root.after(0, err_ui)
             finally:
@@ -533,9 +543,28 @@ class App:
                 self.root.after(0, lambda: messagebox.showerror("Lỗi xuất", str(e)))
                 self.log_status("Lỗi khi xuất toàn bộ")
             finally:
-                self.root.after(0, lambda: (self.progress.configure(value=0), self.btn_export_all_csv.configure(state=NORMAL), self.btn_export_all_excel.configure(state=NORMAL)))
+                # enable buttons lại
+                self.root.after(0, lambda: self.btn_export_all_csv.configure(state=NORMAL))
+                self.root.after(0, lambda: self.btn_export_all_excel.configure(state=NORMAL))
+                self.root.after(0, lambda: self.progress.configure(value=0))
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def cleanup(self):
+        """Xóa các file copy DB trong TEMP_DIR khi thoát ứng dụng"""
+        try:
+            if TEMP_DIR.exists():
+                for f in TEMP_DIR.glob("*.db"):
+                    try:
+                        f.unlink()
+                    except Exception as e:
+                        print(f"Không xóa được {f}: {e}")
+        except Exception as e:
+            print(f"Lỗi cleanup: {e}")
+
+    def on_close(self):
+        self.cleanup()
+        self.root.destroy()
 
 # -----------------------
 # Run application
@@ -544,6 +573,8 @@ class App:
 def main():
     root = tb.Window(themename="litera")
     app = App(root)
+    # Khi đóng cửa sổ thì gọi cleanup trước khi destroy
+    root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()
 
 if __name__ == "__main__":
