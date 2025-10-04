@@ -3,7 +3,7 @@
 
 - Python là tool chạy trên máy tính, laptop:
     cd Python
-    python zl_extractor_gui.py
+    python zl_data_extractor_gui.py
 
 
 - Typescript là tool chạy trên mobile:
