@@ -1,0 +1,64 @@
+Chức năng chính của tool
+
+Chọn thư mục ZaloData
+
+Cho phép người dùng chọn thủ công thư mục ZaloData (nơi Zalo PC lưu database).
+
+Auto-detect luôn đường dẫn mặc định trên Windows:
+
+C:/Users/<username>/AppData/Roaming/ZaloData
+
+
+Quét dữ liệu Zalo
+
+Đọc file database-config.json để lấy UID tài khoản chính (User ID của bạn).
+
+Kiểm tra file Storage.db để lấy thông tin cá nhân (zName, avatar) và danh bạ (info-cache).
+
+Liệt kê các file Message DB trong thư mục:
+
+ZaloData/Database/_production/<UID>/Core/Message/*.db
+
+
+→ Đây là các database chứa tin nhắn theo từng đoạn hội thoại.
+
+Xem thông tin tài khoản chính
+
+Hiển thị UID, tên Zalo (zName).
+
+Hiển thị avatar (tải từ URL avatar lưu trong info-cache).
+
+Xem danh bạ (info-cache)
+
+Liệt kê toàn bộ bạn bè/nhóm từ bảng info-cache trong Storage.db.
+
+Khi chọn 1 người:
+
+Hiển thị UID, tên, avatar.
+
+Hiển thị JSON raw (toàn bộ metadata mà Zalo lưu).
+
+Quản lý avatar
+
+Tải avatar từ link URL trong database và hiển thị trực tiếp lên giao diện.
+
+Có cache để tránh tải lại nhiều lần.
+
+Xem Message DB
+
+Double-click vào file .db của Message để mở.
+
+Theme sáng / tối
+
+Có nút chuyển theme 🌞 / 🌙 (light <-> dark) nhờ ttkbootstrap.
+
+👉 Tóm gọn:
+Đây là Zalo PC Data Extractor GUI – tool giúp bạn:
+
+Quét và hiển thị thông tin Zalo account từ ZaloData.
+
+Xem danh bạ bạn bè, nhóm (info-cache).
+
+Liệt kê các database tin nhắn (Message DB).
+
+Xem trước và xuất dữ liệu tin nhắn/danh bạ.
