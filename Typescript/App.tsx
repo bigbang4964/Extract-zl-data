@@ -1,21 +1,45 @@
-// Import React để sử dụng JSX và component
 import React from "react";
-
-// Import Provider của react-native-paper để bọc toàn bộ app,
-// giúp sử dụng theme, Button, TextInput, ... của thư viện này
+import { View, Text, StyleSheet } from "react-native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { NavigationContainer } from "@react-navigation/native";
 import { Provider as PaperProvider } from "react-native-paper";
+import { MaterialIcons } from "@expo/vector-icons";
 
-// Import màn hình chính của ứng dụng (ZlExtractorScreen)
-import ZlExtractorScreen from "./screens/ZlExtractorScreen";
+import HomeScreen from "./src/screens/HomeScreen";
+import ContactsScreen from "./src/screens/ContactsScreen";
+import SettingsScreen from "./src/screens/SettingsScreen";
+import MessagesScreen from "./src/screens/MessagesScreen"; 
+import GroupsScreen from "./src/screens/GroupsScreen"; // import GroupsScreen
 
-// Component gốc của ứng dụng
+const Tab = createBottomTabNavigator();
+
 export default function App() {
   return (
-    // Bọc toàn bộ ứng dụng trong PaperProvider
-    // để các component con (như Button, TextInput) có thể sử dụng theme mặc định
     <PaperProvider>
-      {/* Gọi màn hình chính ZlExtractorScreen */}
-      <ZlExtractorScreen />
+      <NavigationContainer>
+        <Tab.Navigator
+          screenOptions={({ route }) => ({
+            headerShown: true,
+            tabBarIcon: ({ color, size }) => {
+              let iconName: keyof typeof MaterialIcons.glyphMap = "home";
+
+              if (route.name === "Home") iconName = "home";
+              else if (route.name === "Contacts") iconName = "contacts";
+              else if (route.name === "Settings") iconName = "settings";
+
+              return <MaterialIcons name={iconName} size={size} color={color} />;
+            },
+            tabBarActiveTintColor: "#2196f3",
+            tabBarInactiveTintColor: "gray",
+          })}
+        >
+          <Tab.Screen name="Home" component={HomeScreen} />
+          <Tab.Screen name="Contacts" component={ContactsScreen} />
+          <Tab.Screen name="Settings" component={SettingsScreen} />
+          <Tab.Screen name="Messages" component={MessagesScreen} />
+          <Tab.Screen name="Groups" component={GroupsScreen} />
+        </Tab.Navigator>
+      </NavigationContainer>
     </PaperProvider>
   );
 }

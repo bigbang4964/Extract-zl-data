@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "Typescript",
-    "slug": "extract-zl-data",
+    "name": "typescript",
+    "plugins": ["./zalo-data-module/app.plugin.js"],
+    "slug": "typescript",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -21,20 +22,10 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.lekimngoc.extractzldata"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-sqlite"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "49c62bc4-6d35-4545-8ac7-127ab8145929"
-      }
-    },
-    "owner": "kimngocle1508"
+    }
   }
 }

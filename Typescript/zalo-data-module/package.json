@@ -1,0 +1,10 @@
+{
+  "name": "zalo-data-module",
+  "version": "1.0.0",
+  "description": "Native module duyệt thư mục ZaloData (SAF) cho Expo",
+  "main": "src/index.ts",
+  "react-native": "src/index.ts",
+  "keywords": ["expo", "react-native", "file-system", "zalo"],
+  "author": "Le Kim Ngoc",
+  "license": "MIT"
+}
