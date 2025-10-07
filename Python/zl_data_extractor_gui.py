@@ -179,6 +179,16 @@ class ZaloExtractorApp:
         self.tree.heading("file", text="File")
         self.tree.pack(fill=BOTH, expand=True)
 
+        # Khung nút xuất danh sách Message DB
+        export_frame = tb.Frame(msg_frame)
+        export_frame.pack(fill=X, pady=5)
+
+        tb.Button(export_frame, text="💾 Xuất danh sách CSV", bootstyle="success",
+                command=lambda: self.export_message_list("csv")).pack(side=LEFT, padx=5)
+        tb.Button(export_frame, text="💾 Xuất danh sách Excel", bootstyle="info",
+                command=lambda: self.export_message_list("excel")).pack(side=LEFT, padx=5)
+
+
         sb = tb.Scrollbar(msg_frame, orient="vertical", command=self.tree.yview, bootstyle="round")
         self.tree.configure(yscroll=sb.set)
         sb.pack(side=RIGHT, fill=Y)
@@ -198,11 +208,43 @@ class ZaloExtractorApp:
         self.cache_tree.column("name", width=200)
         self.cache_tree.pack(fill=Y, expand=True)
 
+        # --- Thanh tìm kiếm theo tên ---
+        search_frame2 = tb.Frame(left)
+        search_frame2.pack(fill=X, padx=5, pady=5)
+        tb.Label(search_frame2, text="🔎 Tìm theo tên:").pack(side=LEFT)
+        self.search_var2 = tb.StringVar()
+        search_entry2 = tb.Entry(search_frame2, textvariable=self.search_var2, bootstyle="info")
+        search_entry2.pack(side=LEFT, fill=X, expand=True, padx=5)
+
+        # Hàm lọc danh sách khi gõ
+        def filter_cache(*args):
+            q = self.search_var2.get().lower()
+            self.cache_tree.delete(*self.cache_tree.get_children())
+            for key, (zname, avatar, val) in self.avatar_cache.items():
+                if q in zname.lower():
+                    self.cache_tree.insert("", "end", values=(key, zname, avatar, val))
+
+        # Gắn sự kiện realtime (khi gõ)
+        try:
+            self.search_var2.trace_add("write", filter_cache)
+        except:
+            self.search_var2.trace("w", lambda *a: filter_cache())
+
+
         sb2 = tb.Scrollbar(left, orient="vertical", command=self.cache_tree.yview, bootstyle="round")
         self.cache_tree.configure(yscroll=sb2.set)
         sb2.pack(side=RIGHT, fill=Y)
 
         self.cache_tree.bind("<<TreeviewSelect>>", self.on_select_cache)
+
+                # --- Thêm khung nút xuất danh bạ ---
+        export_frame = tb.Frame(left)
+        export_frame.pack(fill=X, pady=5)
+        tb.Button(export_frame, text="💾 Xuất CSV", bootstyle="success",
+                  command=lambda: self.export_info_cache("csv")).pack(side=LEFT, padx=5)
+        tb.Button(export_frame, text="💾 Xuất Excel", bootstyle="info",
+                  command=lambda: self.export_info_cache("excel")).pack(side=LEFT, padx=5)
+
 
         # Cột phải: chi tiết info-cache
         right = tb.Frame(self.info_tab)
@@ -580,6 +622,75 @@ class ZaloExtractorApp:
             messagebox.showinfo("Xuất thành công", f"✅ Đã lưu {file}")
         except Exception as e:
             messagebox.showerror("Lỗi", str(e))
+
+        # -----------------------------
+    # 💾 Xuất danh sách Message DB ra CSV / Excel
+    def export_message_list(self, fmt):
+        """Xuất danh sách Message DB ra CSV hoặc Excel"""
+        if not self.message_arr:
+            messagebox.showwarning("Không có dữ liệu", "⚠ Chưa quét hoặc không có file Message DB nào.")
+            return
+
+        # Chuẩn bị DataFrame
+        data = [{"Tên file": name, "Đường dẫn": str(path)} for name, (_, path) in self.message_arr.items()]
+        df = pd.DataFrame(data)
+
+        # Hộp thoại chọn nơi lưu
+        file = filedialog.asksaveasfilename(
+            defaultextension=".csv" if fmt == "csv" else ".xlsx",
+            filetypes=[("CSV", "*.csv")] if fmt == "csv" else [("Excel", "*.xlsx")],
+            initialfile="Message_DB_List"
+        )
+        if not file:
+            return
+
+        try:
+            if fmt == "csv":
+                df.to_csv(file, index=False, encoding="utf-8-sig")
+            else:
+                df.to_excel(file, index=False)
+            messagebox.showinfo("Xuất thành công", f"✅ Đã lưu {file}")
+        except Exception as e:
+            messagebox.showerror("Lỗi khi xuất", str(e))
+
+    def export_info_cache(self, fmt="csv"):
+        """Xuất toàn bộ danh bạ info-cache ra CSV hoặc Excel"""
+        if not self.avatar_cache:
+            messagebox.showwarning("Không có dữ liệu", "⚠ Chưa có dữ liệu danh bạ để xuất.")
+            return
+
+        # Chuẩn bị DataFrame
+        records = []
+        for key, (zname, avatar, raw) in self.avatar_cache.items():
+            records.append({
+                "Key": key,
+                "Tên (zName)": zname,
+                "Avatar URL": avatar,
+                "JSON Raw": raw
+            })
+
+        df = pd.DataFrame(records)
+
+        # Hộp thoại chọn nơi lưu file
+        file = filedialog.asksaveasfilename(
+            defaultextension=".csv" if fmt == "csv" else ".xlsx",
+            filetypes=[("CSV", "*.csv")] if fmt == "csv" else [("Excel", "*.xlsx")],
+            initialfile="Zalo_InfoCache"
+        )
+        if not file:
+            return
+
+        try:
+            # Ghi file
+            if fmt == "csv":
+                df.to_csv(file, index=False, encoding="utf-8-sig")
+            else:
+                df.to_excel(file, index=False)
+            messagebox.showinfo("Xuất thành công", f"✅ Đã lưu {file}")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể xuất dữ liệu: {e}")
+
+
 
 
 # -----------------------------
