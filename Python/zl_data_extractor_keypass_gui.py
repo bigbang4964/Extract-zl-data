@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Zalo_SQLCipher_GUI_Tool.py
+zl_data_extractor_keypass_gui.py
 -----------------------------------
 Công cụ GUI cho phép:
  - Chọn file .db (hoặc auto detect)

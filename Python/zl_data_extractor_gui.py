@@ -1,3 +1,34 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+zl_data_extractor_gui.py
+-----------------------------------
+Công cụ GUI cho phép:
+    Tự động phát hiện hoặc chọn thư mục ZaloData
+
+    Đọc thông tin tài khoản Zalo (UID, tên, avatar)
+
+    Liệt kê và mở các file cơ sở dữ liệu tin nhắn (Message DB)
+
+    Xem danh sách bảng trong DB và preview dữ liệu chi tiết
+
+    Tìm kiếm, lọc dữ liệu theo từ khóa trong bảng
+
+    Xuất dữ liệu ra file CSV hoặc Excel
+
+    Xem danh bạ (info-cache) gồm bạn bè, nhóm, user
+
+    Chuyển đổi giao diện sáng/tối (Light/Dark mode)
+
+    Đọc DB an toàn (read-only), hỗ trợ thread tránh treo ứng dụng
+-----------------------------------
+Yêu cầu:
+ pip install ttkbootstrap pandas pillow sqlite3
+
+Lưu ý:
+ - Công cụ chỉ dùng khi bạn **có quyền hợp pháp** (dữ liệu của bạn hoặc giấy phép được phép truy cập).
+ - Luôn làm việc trên **bản copy** của file gốc.
+"""
 import os
 import shutil
 import sqlite3
@@ -349,18 +380,207 @@ class ZaloExtractorApp:
     # -----------------------------
     # Preview bảng SQLite
     # -----------------------------
+    # -----------------------------
+    # 🗂 Hàm mở DB tin nhắn được chọn trong TreeView
     def open_message_db(self, event):
+        # Lấy item đang được chọn trong tree
         item = self.tree.focus()
         if not item:
             return
+
+        # Lấy đường dẫn file DB từ mảng message_arr (theo index)
         db_file = Path(self.message_arr[self.tree.item(item, "values")[0]][1])
+
+        # Gọi hàm preview để chọn bảng trong DB
         self.preview_message_db(db_file)
 
-    # Hiển thị danh sách bảng trong DB
+    # -----------------------------
     def preview_message_db(self, db_file: Path):
-        ...
-        # (giữ nguyên code preview bảng và export CSV/Excel)
-        ...
+        """Hiển thị danh sách bảng có trong file DB và cho phép chọn để xem nội dung"""
+        try:
+            # Hàm list_tables() lấy danh sách bảng trong DB
+            tables = list_tables(db_file)
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không đọc được DB: {db_file}, {e}")
+            return
+
+        # Tạo cửa sổ mới hiển thị danh sách bảng
+        win = tb.Toplevel(self.master)
+        win.title(f"📑 Bảng trong {db_file.name}")
+        win.geometry("400x500")
+
+        tb.Label(win, text=f"Chọn bảng trong {db_file.name}", bootstyle="primary").pack(pady=5)
+
+        # Frame chứa TreeView danh sách bảng
+        frame = tb.Frame(win)
+        frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
+
+        # Tạo TreeView hiển thị danh sách bảng
+        table_list = tb.Treeview(frame, columns=("table",), show="headings", bootstyle="info")
+        table_list.heading("table", text="Tên bảng")
+        for t in tables:
+            table_list.insert("", "end", values=(t,))
+        table_list.pack(fill=BOTH, expand=True)
+
+        # Thêm scrollbar cho danh sách bảng
+        sb = tb.Scrollbar(frame, orient="vertical", command=table_list.yview, bootstyle="round")
+        table_list.configure(yscroll=sb.set)
+        sb.pack(side=RIGHT, fill=Y)
+
+        # Hàm mở bảng được chọn
+        def open_selected_table(event=None):
+            item = table_list.focus()
+            if not item:
+                return
+            # Lấy tên bảng được chọn
+            tname = table_list.item(item, "values")[0]
+            # Đóng cửa sổ chọn bảng
+            win.destroy()
+            # Hiển thị nội dung bảng
+            self.preview_table_by_name(db_file, tname)
+
+        # Gán sự kiện double click để mở bảng
+        table_list.bind("<Double-1>", open_selected_table)
+        # Nút xem bảng
+        tb.Button(win, text="Xem bảng", bootstyle="success", command=open_selected_table).pack(pady=5)
+
+    # -----------------------------
+    def preview_table_by_name(self, db_file: Path, table: str):
+        """Hiển thị preview dữ liệu trong bảng SQLite"""
+        # Tạo cửa sổ xem dữ liệu
+        preview_win = tb.Toplevel(self.master)
+        preview_win.title(f"👀 Preview {db_file.name}:{table}")
+        preview_win.geometry("1000x700")
+
+        # Hiển thị trạng thái tải dữ liệu
+        label_status = tb.Label(preview_win, text="⏳ Đang tải dữ liệu...")
+        label_status.pack(pady=10)
+
+        # Thanh tiến trình (loading)
+        pb = tb.Progressbar(preview_win, mode="indeterminate", bootstyle="info-striped")
+        pb.pack(fill=X, padx=20, pady=5)
+        pb.start()
+
+        # Frame chứa dữ liệu bảng
+        frame_data = tb.Frame(preview_win)
+        frame_data.pack(fill=BOTH, expand=True)
+
+        # Thread tải dữ liệu (tránh treo giao diện)
+        def load_data():
+            try:
+                # Sao chép DB sang bản tạm (tránh lock)
+                db_copy = prepare_db_copy(db_file)
+
+                # Mở DB ở chế độ chỉ đọc
+                conn = sqlite3.connect(f'file:{db_copy}?mode=ro', uri=True)
+
+                # Đọc toàn bộ bảng vào DataFrame Pandas
+                df = pd.read_sql_query(f'SELECT * FROM "{table}"', conn)
+                conn.close()
+
+                # Hàm hiển thị dữ liệu sau khi tải xong
+                def show_data():
+                    label_status.destroy()
+                    pb.stop()
+                    pb.destroy()
+
+                    # 🔍 Thanh tìm kiếm
+                    search_frame = tb.Frame(preview_win)
+                    search_frame.pack(fill=X, padx=5, pady=5)
+                    tb.Label(search_frame, text="🔎 Tìm kiếm:").pack(side=LEFT)
+                    search_var = tb.StringVar()
+                    tb.Entry(search_frame, textvariable=search_var, bootstyle="info").pack(side=LEFT, fill=X, expand=True, padx=5)
+
+                    # Tạo TreeView hiển thị dữ liệu
+                    cols = list(df.columns)
+                    tree = tb.Treeview(frame_data, columns=cols, show="headings", bootstyle="primary")
+
+                    # Cấu hình các cột
+                    for c in cols:
+                        tree.heading(c, text=c)
+                        tree.column(c, width=160, anchor="w", stretch=True)
+                    tree.pack(fill=BOTH, expand=True)
+
+                    # Thêm scrollbar
+                    sb = tb.Scrollbar(frame_data, orient="vertical", command=tree.yview, bootstyle="round")
+                    tree.configure(yscroll=sb.set)
+                    sb.pack(side=RIGHT, fill=Y)
+
+                    # Hàm cập nhật TreeView từ DataFrame
+                    def update_tree(dataframe):
+                        tree.delete(*tree.get_children())
+                        for _, row in dataframe.iterrows():
+                            # Thay giá trị NaN bằng chuỗi rỗng
+                            vals = [("" if pd.isna(x) else x) for x in row.tolist()]
+                            tree.insert("", "end", values=vals)
+
+                    # Hiển thị dữ liệu ban đầu
+                    update_tree(df)
+
+                    # Hàm tìm kiếm (lọc DataFrame theo chuỗi nhập)
+                    def do_search(*args):
+                        q = search_var.get().lower()
+                        if q:
+                            # Lọc các dòng có chứa chuỗi tìm kiếm trong bất kỳ cột nào
+                            filtered = df[df.apply(lambda r: r.astype(str).str.lower().str.contains(q).any(), axis=1)]
+                        else:
+                            filtered = df
+                        update_tree(filtered)
+
+                    # Theo dõi thay đổi trên ô tìm kiếm
+                    try:
+                        search_var.trace_add("write", do_search)
+                    except Exception:
+                        # Fallback cho các phiên bản Tkinter cũ
+                        search_var.trace("w", lambda *a: do_search())
+
+                    # 📤 Khung nút xuất file CSV/Excel
+                    frame_export = tb.Frame(preview_win)
+                    frame_export.pack(pady=5)
+                    tb.Button(frame_export, text="💾 Xuất CSV", bootstyle="success",
+                            command=lambda: self.export_df(df, "csv", db_file.name, table)).pack(side=LEFT, padx=5)
+                    tb.Button(frame_export, text="💾 Xuất Excel", bootstyle="info",
+                            command=lambda: self.export_df(df, "excel", db_file.name, table)).pack(side=LEFT, padx=5)
+
+                # Hiển thị dữ liệu trên giao diện (UI thread)
+                self.master.after(0, show_data)
+
+            except Exception as e:
+                # Báo lỗi nếu không đọc được bảng
+                self.master.after(0, lambda: messagebox.showerror("Lỗi", str(e)))
+            finally:
+                # Dừng progress bar nếu có lỗi
+                try:
+                    self.master.after(0, pb.stop)
+                except Exception:
+                    pass
+
+        # Chạy tải dữ liệu trong luồng riêng
+        threading.Thread(target=load_data, daemon=True).start()
+
+    # -----------------------------
+    def export_df(self, df, fmt, fname, table):
+        """Xuất dữ liệu DataFrame ra CSV hoặc Excel"""
+        # Hộp thoại chọn nơi lưu file
+        file = filedialog.asksaveasfilename(
+            defaultextension=".csv" if fmt == "csv" else ".xlsx",
+            filetypes=[("CSV", "*.csv")] if fmt == "csv" else [("Excel", "*.xlsx")],
+            initialfile=f"{fname}__{table}"
+        )
+        if not file:
+            return
+
+        try:
+            # Ghi file theo định dạng
+            if fmt == "csv":
+                df.to_csv(file, index=False, encoding="utf-8-sig")
+            else:
+                df.to_excel(file, index=False)
+
+            messagebox.showinfo("Xuất thành công", f"✅ Đã lưu {file}")
+        except Exception as e:
+            messagebox.showerror("Lỗi", str(e))
+
 
 # -----------------------------
 # MAIN

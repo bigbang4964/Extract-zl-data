@@ -1,7 +1,6 @@
 {
   "expo": {
     "name": "typescript",
-    "plugins": ["./zalo-data-module/app.plugin.js"],
     "slug": "typescript",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,7 +21,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kimngocle1508.typescript"
     },
     "web": {
       "favicon": "./assets/favicon.png"
