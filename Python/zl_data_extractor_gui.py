@@ -171,6 +171,14 @@ class ZaloExtractorApp:
         self.avatar_label = tb.Label(uid_frame, text="(Avatar sẽ hiển thị ở đây)")
         self.avatar_label.pack(pady=5)
 
+        self.startup_label = tb.Label(uid_frame, text=f"Lần hoạt động gần nhất: {self.load_last_startup()}", bootstyle="secondary")
+        self.startup_label.pack(anchor="w", padx=10, pady=(3, 10))
+
+        self.system_label = tb.Label(uid_frame,
+                             text=f"Máy: {self.get_system_info()}",
+                             bootstyle="secondary")
+        self.system_label.pack(anchor="w", padx=10, pady=(0, 10))
+
         # Khung hiển thị danh sách file Message DB
         msg_frame = tb.LabelFrame(self.main_tab, text="Message DB Files", padding=10, bootstyle="secondary")
         msg_frame.pack(fill=BOTH, expand=True, padx=10, pady=5)
@@ -353,6 +361,10 @@ class ZaloExtractorApp:
                 self.avatar_label.config(image=self.avatar_img, text="")
             else:
                 self.avatar_label.config(text="(No avatar)")
+
+            last_startup = f"Lần khoạt động gần nhất: {self.load_last_startup()}"
+            self.startup_label.config(text=last_startup)
+            self.system_label.config(text=f"Máy: {self.get_system_info()}")
 
         except Exception as e:
             messagebox.showerror("Lỗi", f"Load info-cache thất bại: {e}")
@@ -690,6 +702,32 @@ class ZaloExtractorApp:
         except Exception as e:
             messagebox.showerror("Lỗi", f"Không thể xuất dữ liệu: {e}")
 
+    def load_last_startup(self):
+        """Đọc dòng cuối cùng từ startup.log"""
+        from pathlib import Path
+
+        # Nếu chưa chọn thư mục, mặc định dùng file startup.log ở thư mục hiện tại
+        log_path = None
+        if getattr(self, "selected_dir", None):
+            log_path = Path(self.selected_dir) / "startup.log"
+        else:
+            log_path = Path("startup.log")
+
+        if not log_path.exists():
+            return "Chưa có dữ liệu"
+
+        try:
+            with open(log_path, "r", encoding="utf-8") as f:
+                lines = [line.strip() for line in f.readlines() if line.strip()]
+            if lines:
+                return lines[-1]
+        except Exception as e:
+            print("Lỗi đọc startup.log:", e)
+        return "Chưa có dữ liệu"
+    
+    def get_system_info(self):
+        import platform, socket
+        return f"{socket.gethostname()} - {platform.system()} {platform.release()}"
 
 
 
